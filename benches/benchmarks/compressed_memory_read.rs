@@ -1,6 +1,6 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use bitpacking::{BitPacker, BitPacker1x, BitPacker4x, BitPacker8x};
+use bitpacking::{BitPacker, BitPacker8x};
 use criterion::*;
 
 fn compressed_memory_read_benchmark(c: &mut Criterion) {

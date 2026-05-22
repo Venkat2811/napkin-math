@@ -19,6 +19,25 @@
       ],
       "status": "active_with_caveat",
       "note": "BitPacker integer-unpack microbenchmark; do not treat it as a generic compression or decompression benchmark."
+    },
+    {
+      "id": "hash",
+      "path": "benches/benchmarks/hash.rs",
+      "runner": "script/bench-criterion",
+      "readme_rows": [
+        "Hashing, not crypto-safe (64 bytes)",
+        "Hashing, crypto-safe (64 bytes)"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "syscall",
+      "path": "benches/benchmarks/syscall.rs",
+      "runner": "script/bench-criterion",
+      "readme_rows": [
+        "System Call"
+      ],
+      "status": "active"
     }
   ],
   "legacy_harness": {
@@ -41,48 +60,6 @@
         "id": "memory_write_random",
         "readme_rows": [
           "Random Memory R/W (64 bytes)"
-        ]
-      },
-      {
-        "id": "syscall_getpid",
-        "readme_rows": [
-          "System Call"
-        ]
-      },
-      {
-        "id": "syscall_time",
-        "readme_rows": [
-          "System Call"
-        ]
-      },
-      {
-        "id": "syscall_getrusage",
-        "readme_rows": [
-          "System Call"
-        ]
-      },
-      {
-        "id": "syscall_stat",
-        "readme_rows": [
-          "System Call"
-        ]
-      },
-      {
-        "id": "hash_sha256",
-        "readme_rows": [
-          "Hashing, crypto-safe (64 bytes)"
-        ]
-      },
-      {
-        "id": "hash_crc32",
-        "readme_rows": [
-          "Hashing, not crypto-safe (64 bytes)"
-        ]
-      },
-      {
-        "id": "hash_siphash",
-        "readme_rows": [
-          "Hashing, not crypto-safe (64 bytes)"
         ]
       },
       {
@@ -211,7 +188,7 @@
     }
   ],
   "stale_readme_claims": [
-    "Earlier README revisions claimed the active Criterion suite included blob_storage, memory_random, hash, syscall, sort, serialization, and compression, but benches/napkin_math.rs has only ever registered memory_read and compressed_memory_read in this checkout lineage.",
+    "Earlier README revisions claimed the active Criterion suite included blob_storage, memory_random, sort, serialization, and compression, but the checked-in Criterion entrypoint still does not own those surfaces in this checkout lineage.",
     "Earlier README revisions referenced src/bin/s3_latency.rs and script/blob-* helpers that are not present in this checkout."
   ]
 }
