@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+DEFAULT_REGEX='memory_read_random|memory_write_random|syscall_getpid|syscall_time|syscall_getrusage|syscall_stat|disk_read_sequential|disk_read_sequential_io_uring|disk_read_random|disk_write_sequential_no_fsync|disk_write_sequential_fsync|tcp_read_write|sort|hash_sha256|hash_crc32|hash_siphash'
+REGEX="${1:-${NAPKIN_LEGACY_REGEX:-${DEFAULT_REGEX}}}"
+RUNS="${2:-${NAPKIN_LEGACY_RUNS:-1}}"
+
+cd "${REPO_ROOT}"
+exec env RUSTFLAGS="${RUSTFLAGS:--C target-cpu=native}" cargo run --release -- -e "${REGEX}" -n "${RUNS}"

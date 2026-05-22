@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+CONTAINER_NAME="${NAPKIN_MYSQL_CONTAINER_NAME:-napkin-bench-mysql}"
+IMAGE="${NAPKIN_MYSQL_IMAGE:-mariadb:11}"
+HOST_PORT="${NAPKIN_MYSQL_PORT:-13306}"
+DATABASE_NAME="${NAPKIN_MYSQL_DATABASE:-napkin}"
+RUNS="${1:-${NAPKIN_MYSQL_RUNS:-1}}"
+CREATED_CONTAINER=0
+
+cleanup() {
+  if [ "${CREATED_CONTAINER}" -eq 1 ]; then
+    docker stop "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+  fi
+}
+
+trap cleanup EXIT
+
+if [ -z "${NAPKIN_MYSQL_URL:-}" ]; then
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "docker is required unless NAPKIN_MYSQL_URL is already set" >&2
+    exit 1
+  fi
+
+  if docker ps --format '{{.Names}}' | grep -qx "${CONTAINER_NAME}"; then
+    HOST_PORT="$(docker port "${CONTAINER_NAME}" 3306/tcp | awk -F: 'NR == 1 { print $2 }')"
+  else
+    if docker ps -a --format '{{.Names}}' | grep -qx "${CONTAINER_NAME}"; then
+      echo "container ${CONTAINER_NAME} already exists but is not running; remove it or set NAPKIN_MYSQL_CONTAINER_NAME" >&2
+      exit 1
+    fi
+
+    docker run -d --rm \
+      --name "${CONTAINER_NAME}" \
+      -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 \
+      -e MARIADB_DATABASE="${DATABASE_NAME}" \
+      -p "${HOST_PORT}:3306" \
+      "${IMAGE}" >/dev/null
+    CREATED_CONTAINER=1
+  fi
+
+  READY=0
+  for _ in $(seq 1 120); do
+    if docker exec "${CONTAINER_NAME}" mariadb-admin --protocol=tcp -uroot ping >/dev/null 2>&1; then
+      READY=1
+      break
+    fi
+
+    sleep 0.5
+  done
+
+  if [ "${READY}" -ne 1 ]; then
+    echo "mysql container ${CONTAINER_NAME} did not become ready" >&2
+    exit 1
+  fi
+
+  export NAPKIN_MYSQL_URL="mysql://root:@127.0.0.1:${HOST_PORT}/${DATABASE_NAME}"
+fi
+
+cd "${REPO_ROOT}"
+env RUSTFLAGS="${RUSTFLAGS:--C target-cpu=native}" cargo run --release -- -e mysql_write -n "${RUNS}"

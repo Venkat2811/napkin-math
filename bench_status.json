@@ -1,0 +1,217 @@
+{
+  "criterion": [
+    {
+      "id": "memory_read",
+      "path": "benches/benchmarks/memory_read.rs",
+      "runner": "script/bench-criterion",
+      "readme_rows": [
+        "Sequential Memory R/W (64 bytes) / Single Thread",
+        "Sequential Memory R/W (64 bytes) / Threaded"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "compressed_memory_read",
+      "path": "benches/benchmarks/compressed_memory_read.rs",
+      "runner": "script/bench-criterion",
+      "readme_rows": [
+        "Decompression [11]"
+      ],
+      "status": "active_with_caveat",
+      "note": "BitPacker integer-unpack microbenchmark; do not treat it as a generic compression or decompression benchmark."
+    }
+  ],
+  "legacy_harness": {
+    "path": "src/main.rs",
+    "runner": "script/bench-legacy",
+    "unmapped_benches": [
+      "memory_read_sequential_threaded",
+      "memory_read_sequential",
+      "memory_write_sequential",
+      "mutex"
+    ],
+    "benches": [
+      {
+        "id": "memory_read_random",
+        "readme_rows": [
+          "Random Memory R/W (64 bytes)"
+        ]
+      },
+      {
+        "id": "memory_write_random",
+        "readme_rows": [
+          "Random Memory R/W (64 bytes)"
+        ]
+      },
+      {
+        "id": "syscall_getpid",
+        "readme_rows": [
+          "System Call"
+        ]
+      },
+      {
+        "id": "syscall_time",
+        "readme_rows": [
+          "System Call"
+        ]
+      },
+      {
+        "id": "syscall_getrusage",
+        "readme_rows": [
+          "System Call"
+        ]
+      },
+      {
+        "id": "syscall_stat",
+        "readme_rows": [
+          "System Call"
+        ]
+      },
+      {
+        "id": "hash_sha256",
+        "readme_rows": [
+          "Hashing, crypto-safe (64 bytes)"
+        ]
+      },
+      {
+        "id": "hash_crc32",
+        "readme_rows": [
+          "Hashing, not crypto-safe (64 bytes)"
+        ]
+      },
+      {
+        "id": "hash_siphash",
+        "readme_rows": [
+          "Hashing, not crypto-safe (64 bytes)"
+        ]
+      },
+      {
+        "id": "sort",
+        "readme_rows": [
+          "Sorting (64-bit integers)"
+        ]
+      },
+      {
+        "id": "tcp_read_write",
+        "readme_rows": [
+          "TCP Echo Server (32 KiB)"
+        ]
+      },
+      {
+        "id": "disk_read_sequential",
+        "readme_rows": [
+          "Sequential SSD read (8 KiB)",
+          "Sequential HDD Read (8 KiB)"
+        ]
+      },
+      {
+        "id": "disk_read_sequential_io_uring",
+        "readme_rows": [
+          "Sequential SSD read (8 KiB)"
+        ]
+      },
+      {
+        "id": "disk_read_random",
+        "readme_rows": [
+          "Random SSD Read (8 KiB)",
+          "Random HDD Read (8 KiB)"
+        ]
+      },
+      {
+        "id": "disk_write_sequential_no_fsync",
+        "readme_rows": [
+          "Sequential SSD write, -fsync (8KiB)"
+        ]
+      },
+      {
+        "id": "disk_write_sequential_fsync",
+        "readme_rows": [
+          "Sequential SSD write, +fsync (8KiB)"
+        ]
+      }
+    ]
+  },
+  "service_harness": [
+    {
+      "id": "redis_read_single_key",
+      "runner": "script/bench-redis",
+      "env": [
+        "NAPKIN_REDIS_URL",
+        "NAPKIN_REDIS_PORT",
+        "NAPKIN_REDIS_CONTAINER_NAME",
+        "NAPKIN_REDIS_IMAGE"
+      ],
+      "readme_rows": [
+        "{MySQL, Memcached, Redis, ..} Query"
+      ]
+    },
+    {
+      "id": "mysql_write",
+      "runner": "script/bench-mysql",
+      "env": [
+        "NAPKIN_MYSQL_URL",
+        "NAPKIN_MYSQL_PORT",
+        "NAPKIN_MYSQL_CONTAINER_NAME",
+        "NAPKIN_MYSQL_IMAGE",
+        "NAPKIN_MYSQL_DATABASE"
+      ],
+      "readme_rows": [
+        "{MySQL, Memcached, Redis, ..} Query"
+      ]
+    }
+  ],
+  "external_reference": [
+    {
+      "group": "blob_storage",
+      "readme_rows": [
+        "Blob Storage GET, if-not-match 304",
+        "Blob Storage GET, 1 conn (128KiB)",
+        "Blob Storage GET, n conn (offsets)",
+        "Blob Storage LIST",
+        "Blob Storage PUT, 1 conn (128KiB)",
+        "Blob Storage PUT, n conn (multipart)"
+      ],
+      "note": "Reference text only in this checkout; no checked-in blob benchmark implementation is present."
+    },
+    {
+      "group": "serialization",
+      "readme_rows": [
+        "Fast Serialization [8] [9]",
+        "Fast Deserialization [8] [9]",
+        "Serialization [8] [9]",
+        "Deserialization [8] [9]"
+      ],
+      "note": "Reference text only; this checkout does not include active serialization benchmarks."
+    },
+    {
+      "group": "compression_reference",
+      "readme_rows": [
+        "Compression [11]",
+        "Compression Ratios"
+      ],
+      "note": "Reference text and external sources; do not treat compressed_memory_read as a generic compression benchmark."
+    },
+    {
+      "group": "network_and_costs",
+      "readme_rows": [
+        "Network Same-Zone",
+        "Network within same region",
+        "Premium network within zone/VPC",
+        "Network between regions",
+        "Cost Numbers"
+      ],
+      "note": "Curated README reference text rather than code-generated output."
+    },
+    {
+      "group": "host_local_communication",
+      "readme_rows": [
+        "Host-Local Communication"
+      ],
+      "note": "Derived from companion benchmark repos disruptor-rs and myelon, not from napkin-math benches."
+    }
+  ],
+  "stale_readme_claims": [
+    "Earlier README revisions claimed the active Criterion suite included blob_storage, memory_random, hash, syscall, sort, serialization, and compression, but benches/napkin_math.rs has only ever registered memory_read and compressed_memory_read in this checkout lineage.",
+    "Earlier README revisions referenced src/bin/s3_latency.rs and script/blob-* helpers that are not present in this checkout."
+  ]
+}

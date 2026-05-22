@@ -90,73 +90,35 @@ serialization such as e.g. JSON will be of the slower kind. We include both here
 as serialization/deserialization is a very, very broad topic with extremely
 different performance characteristics depending on data and implementation.
 
-For the active Criterion suite, run `./run --bench napkin_math` to get the
-right optimization levels and Linux tuning. You won't get the right numbers
-when you're compiling in debug mode. The wrapper already uses `sudo`
-internally. On locked-down cloud images, run
-`sudo sysctl -w kernel.perf_event_paranoid=-1` once before invoking it. You
-can help this project by adding new suites and filling out the blanks.
+For the active Criterion suite, run `./script/bench-criterion`. It keeps the
+safe part of the old `./run` wrapper: `--release` plus
+`RUSTFLAGS='-C target-cpu=native'`, without assuming `sudo`, Intel-specific
+sysfs knobs, or hyperthreading control. The older `./run` wrapper is still
+available when you want aggressive host tuning on a dedicated Linux box.
 
-**Note:** The active benchmark path today is Criterion.rs in `benches/`.
-`src/main.rs` is still the older ad hoc harness and remains the source of truth
-for the benches that have not been fully migrated and revalidated yet. The
-current Criterion suite now includes `blob_storage`, `memory_read`,
-`memory_random`, `hash`, `syscall`, `sort`, `serialization`, `compression`,
-and `compressed_memory_read`. The current SSD rows were refreshed from the older
-harness with `NAPKIN_BENCH_FILE` pointed at a RAID0 local-SSD mount.
+**Note:** The active benchmark path today is Criterion.rs in `benches/`, and
+the checked-in Criterion entrypoint currently owns only `memory_read` and
+`compressed_memory_read`. `src/main.rs` is still the older ad hoc harness and
+remains the source of truth for `memory_random`, `hash`, `syscall`, `sort`,
+`disk`, `tcp`, `redis`, `mysql`, and `mutex` style probes that have not been
+fully migrated and revalidated yet. Use `./script/bench-legacy` for the local
+legacy benches, `./script/bench-redis` for the Redis probe, and
+`./script/bench-mysql` for the MySQL write probe. The root
+[`bench_status.json`](bench_status.json) file records which README rows are
+Criterion-backed, legacy-harness-backed, external reference text, or currently
+stale.
+
 The `compressed_memory_read` Criterion bench is a BitPacker integer-unpack
 microbenchmark; it should not be used to rewrite the generic `[11]`
-compression/decompression rows above. The new `serialization` and
-`compression` Criterion groups are workload-specific and are not yet wired into
-the generic README rows above.
-The new `blob_storage` Criterion group is opt-in and credentialed: set
-`NAPKIN_GCS_BUCKET` and/or `NAPKIN_S3_BUCKET`. Both the GCS and S3 paths now
-use the AWS S3 SDK. The GCS side talks to the GCS XML interoperability endpoint
-and requires `NAPKIN_GCS_ACCESS_KEY` plus `NAPKIN_GCS_SECRET_KEY`. The S3 side
-uses the local AWS profile in `NAPKIN_S3_PROFILE` (default `tpuf-test`) plus
-`NAPKIN_S3_REGION` (default `us-west-2`).
-The concurrent `get_offsets` and `put_multipart` paths explicitly fan out onto
-a multi-thread Tokio runtime, so they can get close to the host NIC limit when
-the range count / object count is high enough. On March 9, 2026, same-region
-`1 GiB` single-stream GETs landed at about `95 MiB/s` on S3 (`m6id.12xlarge`
-in `us-west-2a`) and about `190-200 MiB/s` on GCS XML
-(`c4-standard-48-lssd` in `us-central1-c`). On the same machines, explicit
-concurrent range GETs reached about `2.0 GiB/s` on S3 and about `4.9 GiB/s` on
-GCS, while multipart PUTs reached about `1.8-1.9 GiB/s` on S3 and about
-`3.3 GiB/s` on GCS. AWS's own S3 guidance suggests budgeting about
-`85-90 MB/s` per concurrent request when saturating a `10 Gbps` instance, which
-matched the measured S3 single-stream result closely. The old `500 MiB/s`
-single-stream blob GET row above did not reproduce on either provider, so it
-has been revised down to a conservative generic `100 MiB/s`. The current
-blob-storage work has revalidated throughput much more than first-byte latency;
-the `50 ms` / `150 ms` latency cells above should still be read as rough
-heuristics until a dedicated small-object / time-to-first-byte probe is added.
-There is now a dedicated small-object latency probe in `src/bin/s3_latency.rs`.
-Run `./script/blob-latency s3` or `./script/blob-latency gcs` to sweep
-`get`, `put`, `if_none_match`, and `put_if_match` across the default
-`8 KiB .. 8 MiB` size ladder, except `if_none_match`, which now defaults to a
-single `128 KiB` row because its latency was effectively flat across the small
-size sweep. Override `NAPKIN_BLOB_LATENCY_OPS`,
-`NAPKIN_BLOB_LATENCY_SIZES`, and
-`NAPKIN_BLOB_LATENCY_IF_NONE_MATCH_SIZES` when you want a smaller or
-provider-specific run. The latency probe now defaults to a per-row wall-clock
-budget of `300` seconds, collecting as many samples as fit in that time.
-Tune that with `NAPKIN_BLOB_LATENCY_ROW_SECONDS`; optionally cap it with
-`NAPKIN_BLOB_LATENCY_SAMPLE_CAP` (or the older `NAPKIN_BLOB_LATENCY_SAMPLES`
-alias) when you want shorter count-limited experiments instead.
-The `list` op now seeds a larger namespace by default (`100k` keys) and
-measures one randomized `1000`-key page per sample via `start_after`, rather
-than repeatedly scanning the same small fixed prefix. Tune that shape with
-`NAPKIN_BLOB_LATENCY_LIST_NAMESPACE_KEYS`,
-`NAPKIN_BLOB_LATENCY_LIST_KEYS`, and
-`NAPKIN_BLOB_LATENCY_LIST_SEED_CONCURRENCY`. If you also want the old
-whole-namespace walk, add `list_full_scan` to `NAPKIN_BLOB_LATENCY_OPS`.
-For aligned range-read latency, `./script/blob-random-range-latency` measures
-the `128 KiB`-aligned shape and `./script/blob-random-range-latency-8m`
-measures the `8 MiB`-aligned shape over the same `128 x 1 GiB` object pool.
-`./script/blob-random-range-latency-8m-multipart` seeds those `1 GiB` source
-objects via multipart upload with `8 MiB` parts, then measures `8 MiB`-aligned
-reads against those multipart boundaries.
+compression/decompression rows above.
+
+The object-storage rows above are currently reference text only in this
+checkout. Earlier README notes referred to a `blob_storage` Criterion group plus
+helpers such as `src/bin/s3_latency.rs` and `./script/blob-*`, but those files
+are not present in the checked-in tree today. Treat the blob-storage numbers as
+curated heuristics until benchmark code is restored and wired back into the
+repo.
+
 `memory_read` now emits explicit `No SIMD` and `SIMD` variants in Criterion,
 but the README intentionally collapses them to one single-thread row and one
 threaded row for memorability.

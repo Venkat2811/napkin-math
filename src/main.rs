@@ -32,6 +32,18 @@ fn benchmark_file_name() -> String {
     std::env::var("NAPKIN_BENCH_FILE").unwrap_or_else(|_| String::from(DEFAULT_FILE_NAME))
 }
 
+fn env_or_default(name: &str, default: &str) -> String {
+    std::env::var(name).unwrap_or_else(|_| String::from(default))
+}
+
+fn redis_benchmark_url() -> String {
+    env_or_default("NAPKIN_REDIS_URL", "redis://127.0.0.1/")
+}
+
+fn mysql_benchmark_url() -> String {
+    env_or_default("NAPKIN_MYSQL_URL", "mysql://root:@localhost:3306/napkin")
+}
+
 #[cfg(target_os = "linux")]
 fn drop_file_page_cache(file: &std::fs::File) {
     unsafe {
@@ -1135,7 +1147,7 @@ fn tcp_read_write() {
 // }
 
 fn redis_read_single_key() {
-    let client = redis::Client::open("redis://127.0.0.1/").unwrap();
+    let client = redis::Client::open(redis_benchmark_url()).unwrap();
 
     let result = benchmark(
         || {
@@ -1265,7 +1277,7 @@ fn hash_siphash() {
 }
 
 fn mysql_write() {
-    let url = "mysql://root:@localhost:3306/napkin";
+    let url = mysql_benchmark_url();
 
     // struct Product {
     //     id: i64,
@@ -1318,7 +1330,7 @@ fn mysql_write() {
     // 4020/0x15e848:  130444415     277    110 fsync(0x5, 0x0, 0x0)
     let result = benchmark(
         || {
-            let opts = Opts::from_url(url).unwrap();
+            let opts = Opts::from_url(&url).unwrap();
             let pool = Pool::new(opts).unwrap();
             let mut conn = pool.get_conn().unwrap();
             conn.query_drop(

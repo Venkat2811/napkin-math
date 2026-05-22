@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+CONTAINER_NAME="${NAPKIN_REDIS_CONTAINER_NAME:-napkin-bench-redis}"
+IMAGE="${NAPKIN_REDIS_IMAGE:-redis:7-alpine}"
+HOST_PORT="${NAPKIN_REDIS_PORT:-16379}"
+RUNS="${1:-${NAPKIN_REDIS_RUNS:-1}}"
+CREATED_CONTAINER=0
+
+cleanup() {
+  if [ "${CREATED_CONTAINER}" -eq 1 ]; then
+    docker stop "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+  fi
+}
+
+trap cleanup EXIT
+
+if [ -z "${NAPKIN_REDIS_URL:-}" ]; then
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "docker is required unless NAPKIN_REDIS_URL is already set" >&2
+    exit 1
+  fi
+
+  if docker ps --format '{{.Names}}' | grep -qx "${CONTAINER_NAME}"; then
+    HOST_PORT="$(docker port "${CONTAINER_NAME}" 6379/tcp | awk -F: 'NR == 1 { print $2 }')"
+  else
+    if docker ps -a --format '{{.Names}}' | grep -qx "${CONTAINER_NAME}"; then
+      echo "container ${CONTAINER_NAME} already exists but is not running; remove it or set NAPKIN_REDIS_CONTAINER_NAME" >&2
+      exit 1
+    fi
+
+    docker run -d --rm --name "${CONTAINER_NAME}" -p "${HOST_PORT}:6379" "${IMAGE}" >/dev/null
+    CREATED_CONTAINER=1
+  fi
+
+  READY=0
+  for _ in $(seq 1 50); do
+    if docker exec "${CONTAINER_NAME}" redis-cli ping >/dev/null 2>&1; then
+      READY=1
+      break
+    fi
+
+    sleep 0.2
+  done
+
+  if [ "${READY}" -ne 1 ]; then
+    echo "redis container ${CONTAINER_NAME} did not become ready" >&2
+    exit 1
+  fi
+
+  export NAPKIN_REDIS_URL="redis://127.0.0.1:${HOST_PORT}/"
+fi
+
+cd "${REPO_ROOT}"
+env RUSTFLAGS="${RUSTFLAGS:--C target-cpu=native}" cargo run --release -- -e redis_read_single_key -n "${RUNS}"
