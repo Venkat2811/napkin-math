@@ -161,6 +161,37 @@ reads against those multipart boundaries.
 but the README intentionally collapses them to one single-thread row and one
 threaded row for memorability.
 
+### Host-Local Communication
+
+The main table above intentionally emphasizes broad machine constants.
+Host-local communication is trickier: one generic `IPC latency` row hides too
+much. Inter-thread and inter-process numbers move materially with topology
+(`1p1c` vs `1pNc`), pacing (max throughput vs fixed rate), batching, payload
+size, and backend (`shm` vs `mmap`).
+
+For now, treat the table below as a companion reference range rather than a
+single memorized constant. The active benchmark path in this repo does not yet
+own this surface. These rows are distilled from dedicated transport benchmark
+suites in [`disruptor-rs`](https://github.com/Venkat2811/disruptor-rs/tree/7b32d11)
+for inter-thread rings and
+[`myelon`](https://github.com/Venkat2811/myelon/tree/35d68fb) for
+inter-process SHM/mmap rings on modern x86 hosts.
+
+| Operation                          | Shape                            | Heuristic                         | Notes |
+| ---------------------------------- | -------------------------------- | --------------------------------- | ----- |
+| Inter-thread lock-free handoff     | SPSC, burst = `1`                | `7-17 ns`, `60-150M msgs/s`       | One producer, one consumer, busy-spin style ring / bounded channel regime. |
+| Inter-thread batched handoff       | SPSC, bursts of `10-100`         | `2.6-3.2 ns / msg`, `315-380M msgs/s` | Batching changes the answer enough that a single queue-latency number is misleading. |
+| Inter-thread multi-producer handoff | MPSC aggregate                  | `~340M msgs/s` ring, `~75M msgs/s` bounded channel | Aggregate throughput across two producers; use only for CPU-burning same-host paths. |
+| Inter-process signal               | `1p1c`, `64B` event, no ack      | `~160-330M ops/s` total signal ceiling | Not RTT; producer and consumer are both doing work every event. |
+| Inter-process ping-pong            | `1p1c` SHM, `64B`                | `~120-190 ns p50`, `~5-6M RTT/s`  | Request/response RTT on one host with busy-spin waiting. |
+| Inter-process broadcast            | `1p4c` mmap, `1 KiB`             | `~9M msgs/s` producer, `~9M msgs/s` per consumer | Every consumer sees every message; aggregate delivered bandwidth scales with fan-out. |
+| Inter-process payload bandwidth    | `1p4c` mmap, `128 KiB`           | `~14 GiB/s` producer-side publish bandwidth | Large-payload same-host fan-out regime; do not reuse for small-message latency budgeting. |
+
+If you need one quick mental checksum: inter-thread rings are usually in the
+single-digit-to-tens-of-nanoseconds regime, inter-process SHM ping-pong is
+usually in the low-hundreds-of-nanoseconds regime, and broadcast / fan-out
+should be modeled separately from RTT.
+
 I am aware of some inefficiencies in this suite. I intend to improve my skills
 in this area, in order to ensure the numbers are the upper-bound of performance
 you may be able to squeeze out in production. I find it highly unlikely any of
@@ -302,5 +333,11 @@ MiB/s, and 3x at ~20MiB/s, and 4x at 1MB/s.
 * [How Long Does It Takes To Make a Context Switch](https://blog.tsunanet.net/2010/11/how-long-does-it-take-to-make-context.html)
 * [Integer Compression Comparisons](https://github.com/powturbo/TurboPFor-Integer-Compression)
 * [Files are hard](https://danluu.com/file-consistency/)
+* [`disruptor-rs`](https://github.com/Venkat2811/disruptor-rs). Dedicated
+  inter-thread ring benchmark surface used for the SPSC / MPSC host-local
+  communication reference rows above.
+* [`myelon`](https://github.com/Venkat2811/myelon). Dedicated inter-process
+  SHM / mmap transport benchmark surface used for the signal / ping-pong /
+  broadcast reference rows above.
 
 [fio]: https://github.com/axboe/fio
