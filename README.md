@@ -98,11 +98,11 @@ available when you want aggressive host tuning on a dedicated Linux box.
 
 **Note:** The active benchmark path today is Criterion.rs in `benches/`, and
 the checked-in Criterion entrypoint currently owns `memory_read`,
-`compressed_memory_read`, `hash`, and `syscall`. `src/main.rs` is still the
-older ad hoc harness and remains the source of truth for `memory_random`,
-`sort`, `disk`, `tcp`, `redis`, `mysql`, and `mutex` style probes that have
-not been fully migrated and revalidated yet. Use `./script/bench-legacy` for
-the local legacy benches, `./script/bench-redis` for the Redis probe, and
+`compressed_memory_read`, `hash`, `memory_random`, `sort`, and `syscall`.
+`src/main.rs` is still the older ad hoc harness and remains the source of truth
+for `disk`, `tcp`, `redis`, `mysql`, and `mutex` style probes that have not
+been fully migrated and revalidated yet. Use `./script/bench-legacy` for the
+remaining local legacy benches, `./script/bench-redis` for the Redis probe, and
 `./script/bench-mysql` for the MySQL write probe. The root
 [`bench_status.json`](bench_status.json) file records which README rows are
 Criterion-backed, legacy-harness-backed, external reference text, or currently

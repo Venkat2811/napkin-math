@@ -38,6 +38,25 @@
         "System Call"
       ],
       "status": "active"
+    },
+    {
+      "id": "memory_random",
+      "path": "benches/benchmarks/memory_random.rs",
+      "runner": "script/bench-criterion",
+      "readme_rows": [
+        "Random Memory R/W (64 bytes)"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "sort",
+      "path": "benches/benchmarks/sort.rs",
+      "runner": "script/bench-criterion",
+      "readme_rows": [
+        "Sorting (64-bit integers)"
+      ],
+      "status": "active_with_caveat",
+      "note": "Criterion re-clones a 1 MiB unsorted input per iteration so the sort always runs on randomized data."
     }
   ],
   "legacy_harness": {
@@ -50,24 +69,6 @@
       "mutex"
     ],
     "benches": [
-      {
-        "id": "memory_read_random",
-        "readme_rows": [
-          "Random Memory R/W (64 bytes)"
-        ]
-      },
-      {
-        "id": "memory_write_random",
-        "readme_rows": [
-          "Random Memory R/W (64 bytes)"
-        ]
-      },
-      {
-        "id": "sort",
-        "readme_rows": [
-          "Sorting (64-bit integers)"
-        ]
-      },
       {
         "id": "tcp_read_write",
         "readme_rows": [
@@ -188,7 +189,7 @@
     }
   ],
   "stale_readme_claims": [
-    "Earlier README revisions claimed the active Criterion suite included blob_storage, memory_random, sort, serialization, and compression, but the checked-in Criterion entrypoint still does not own those surfaces in this checkout lineage.",
+    "Earlier README revisions claimed the active Criterion suite included blob_storage, serialization, and compression, but the checked-in Criterion entrypoint still does not own those surfaces in this checkout lineage.",
     "Earlier README revisions referenced src/bin/s3_latency.rs and script/blob-* helpers that are not present in this checkout."
   ]
 }
