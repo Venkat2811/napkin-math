@@ -98,7 +98,7 @@ use std::io::SeekFrom;
 use std::mem::forget;
 use std::net::{TcpListener, TcpStream};
 use std::ptr;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 
@@ -362,7 +362,7 @@ fn main() {
         )
         .get_matches();
 
-    let methods: [(&'static str, fn()); 22] = [
+    let methods: [(&'static str, fn()); 21] = [
         (
             "memory_read_sequential_threaded",
             memory_read_sequential_threaded,
@@ -391,7 +391,6 @@ fn main() {
         ("redis_read_single_key", redis_read_single_key),
         ("mysql_write", mysql_write),
         ("sort", sort),
-        ("mutex", mutex),
         ("hash_sha256", hash_sha256),
         ("hash_crc32", hash_crc32),
         ("hash_siphash", hash_siphash),
@@ -1197,35 +1196,6 @@ fn sort() {
     .unwrap();
 
     result.print_results("Sort", TOTAL_SIZE);
-}
-
-fn mutex() {
-    let mutex = Arc::new(Mutex::new(0));
-
-    let result = benchmark(
-        || {
-            let t_mutex = mutex.clone();
-            thread::spawn(move || {
-                loop {
-                    let mut data = t_mutex.lock().unwrap();
-                    // let duration = time::Duration::from_micros(10);
-                    // thread::sleep(duration);
-                    *data += 10;
-                }
-            });
-
-            mutex.clone()
-        },
-        |mutex| {
-            let mut data = mutex.lock().unwrap();
-            *data += 10;
-            true
-        },
-    )
-    .unwrap();
-
-    println!("{}", mutex.lock().unwrap());
-    result.print_results("Mutex", 1);
 }
 
 fn hash_sha256() {

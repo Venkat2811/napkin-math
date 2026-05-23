@@ -5,8 +5,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-DEFAULT_REGEX='mutex'
-REGEX="${1:-${NAPKIN_LEGACY_REGEX:-${DEFAULT_REGEX}}}"
+if [ "$#" -gt 0 ]; then
+  REGEX="$1"
+elif [ -n "${NAPKIN_LEGACY_REGEX:-}" ]; then
+  REGEX="${NAPKIN_LEGACY_REGEX}"
+else
+  echo "bench-legacy requires an explicit regex. Historical legacy benches: memory_read_sequential_threaded, memory_read_sequential, memory_write_sequential" >&2
+  exit 1
+fi
+
 RUNS="${2:-${NAPKIN_LEGACY_RUNS:-1}}"
 
 cd "${REPO_ROOT}"

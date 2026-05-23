@@ -98,17 +98,22 @@ available when you want aggressive host tuning on a dedicated Linux box.
 
 **Note:** The active benchmark path today is Criterion.rs in `benches/`, and
 the checked-in Criterion entrypoint currently owns `memory_read`,
-`compressed_memory_read`, `disk`, `hash`, `memory_random`, `sort`, `syscall`,
-and `tcp`, including the Linux-only `io_uring` sequential-read disk variant.
-`src/main.rs` is still the older ad hoc harness and now mostly remains for the
-service probes plus rough legacy coordination experiments like `mutex`. Use
-`./script/bench-legacy` for those remaining ad hoc probes,
-`./script/bench-redis` for the Redis probe, and `./script/bench-mysql` for the
-MySQL write probe. `./script/bench-local --noplot` runs the full owned local
-surface in this checkout, and `./script/bench-services` runs the service-backed
-probes. Those service probes are intentionally narrow: Redis is a single-key
-GET on a warm connection, and MySQL is a single autocommitted INSERT on a warm
-connection against a disposable local InnoDB table. The root
+`compressed_memory_read`, `coordination`, `disk`, `hash`, `memory_random`,
+`sort`, `syscall`, and `tcp`, including the Linux-only `io_uring`
+sequential-read disk variant. `src/main.rs` is still the older ad hoc harness
+and now mostly remains for the service probes plus historical duplicate local
+bench paths. Use `./script/bench-legacy` only when you explicitly want those
+historical comparisons, `./script/bench-redis` for the Redis probe, and
+`./script/bench-mysql` for the MySQL write probe. `./script/bench-local
+--noplot` runs the full owned local surface in this checkout, and
+`./script/bench-services` runs the service-backed probes.
+`./script/bench-all --noplot` runs the maintained local suite and, when no
+filter args are provided, the service probes too. Those service probes are
+intentionally narrow: Redis is a single-key GET on a warm connection, and
+MySQL is a single autocommitted INSERT on a warm connection against a
+disposable local InnoDB table. The `coordination` bench is intentionally
+separate from the README's `Context Switch` row: it is a contended mutex probe,
+not a scheduler context-switch benchmark. The root
 [`bench_status.json`](bench_status.json) file records which README rows are
 Criterion-backed, legacy-harness-backed, external reference text, or currently
 stale.
@@ -138,9 +143,10 @@ size, and backend (`shm` vs `mmap`).
 
 For now, treat the table below as a companion reference range rather than a
 single memorized constant. The active benchmark path in this repo does not yet
-own this surface. These rows are distilled from dedicated transport benchmark
-suites in [`disruptor-rs`](https://github.com/Venkat2811/disruptor-rs/tree/7b32d11)
-for inter-thread rings and
+own the full inter-thread/inter-process transport surface. These rows are
+distilled from dedicated transport benchmark suites in
+[`disruptor-rs`](https://github.com/Venkat2811/disruptor-rs/tree/7b32d11) for
+inter-thread rings and
 [`myelon`](https://github.com/Venkat2811/myelon/tree/35d68fb) for
 inter-process SHM/mmap rings on modern x86 hosts.
 

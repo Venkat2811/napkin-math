@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+RUN_LOCAL="${NAPKIN_RUN_LOCAL:-1}"
+RUN_SERVICES="${NAPKIN_RUN_SERVICES:-auto}"
+RUN_LEGACY="${NAPKIN_RUN_LEGACY:-0}"
+HAS_LOCAL_ARGS=0
+
+if [ "$#" -gt 0 ]; then
+  HAS_LOCAL_ARGS=1
+fi
+
+case "${RUN_LOCAL}" in
+  1|true|yes)
+    "${SCRIPT_DIR}/bench-local" "$@"
+    ;;
+  0|false|no)
+    ;;
+  *)
+    echo "Invalid NAPKIN_RUN_LOCAL value: ${RUN_LOCAL}" >&2
+    exit 1
+    ;;
+esac
+
+case "${RUN_SERVICES}" in
+  auto)
+    if [ "${HAS_LOCAL_ARGS}" -eq 0 ]; then
+      "${SCRIPT_DIR}/bench-services"
+    fi
+    ;;
+  1|true|yes)
+    "${SCRIPT_DIR}/bench-services"
+    ;;
+  0|false|no)
+    ;;
+  *)
+    echo "Invalid NAPKIN_RUN_SERVICES value: ${RUN_SERVICES}" >&2
+    exit 1
+    ;;
+esac
+
+case "${RUN_LEGACY}" in
+  1|true|yes)
+    if [ -z "${NAPKIN_LEGACY_REGEX:-}" ]; then
+      echo "Set NAPKIN_LEGACY_REGEX to run historical legacy benches from bench-all" >&2
+      exit 1
+    fi
+    "${SCRIPT_DIR}/bench-legacy" "${NAPKIN_LEGACY_REGEX}" "${NAPKIN_LEGACY_RUNS:-1}"
+    ;;
+  0|false|no)
+    ;;
+  *)
+    echo "Invalid NAPKIN_RUN_LEGACY value: ${RUN_LEGACY}" >&2
+    exit 1
+    ;;
+esac

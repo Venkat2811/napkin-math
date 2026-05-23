@@ -1,4 +1,5 @@
 pub mod compressed_memory_read;
+pub mod coordination;
 pub mod disk;
 pub mod hash;
 pub mod memory_read;

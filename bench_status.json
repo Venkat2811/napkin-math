@@ -21,6 +21,14 @@
       "note": "BitPacker integer-unpack microbenchmark; do not treat it as a generic compression or decompression benchmark."
     },
     {
+      "id": "coordination",
+      "path": "benches/benchmarks/coordination.rs",
+      "runner": "script/bench-criterion",
+      "readme_rows": [],
+      "status": "active_with_caveat",
+      "note": "Contended std::sync::Mutex microbenchmark with one background contender. Useful as a rough same-process coordination probe, but do not treat it as a context-switch benchmark."
+    },
+    {
       "id": "hash",
       "path": "benches/benchmarks/hash.rs",
       "runner": "script/bench-criterion",
@@ -89,8 +97,7 @@
     "unmapped_benches": [
       "memory_read_sequential_threaded",
       "memory_read_sequential",
-      "memory_write_sequential",
-      "mutex"
+      "memory_write_sequential"
     ],
     "benches": []
   },
