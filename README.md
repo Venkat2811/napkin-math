@@ -104,7 +104,9 @@ source of truth for the Linux-only `io_uring` disk variant plus `redis`,
 `mysql`, and `mutex` style probes that have not been fully migrated and
 revalidated yet. Use `./script/bench-legacy` for the remaining local legacy
 bench, `./script/bench-redis` for the Redis probe, and `./script/bench-mysql`
-for the MySQL write probe. The root
+for the MySQL write probe. `./script/bench-local --noplot` runs the full
+owned local surface in this checkout, and `./script/bench-services` runs the
+service-backed probes. The root
 [`bench_status.json`](bench_status.json) file records which README rows are
 Criterion-backed, legacy-harness-backed, external reference text, or currently
 stale.

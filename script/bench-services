@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+RUN_REDIS="${NAPKIN_RUN_REDIS:-1}"
+RUN_MYSQL="${NAPKIN_RUN_MYSQL:-1}"
+REDIS_RUNS="${NAPKIN_REDIS_RUNS:-1}"
+MYSQL_RUNS="${NAPKIN_MYSQL_RUNS:-1}"
+
+case "${RUN_REDIS}" in
+  1|true|yes)
+    "${SCRIPT_DIR}/bench-redis" "${REDIS_RUNS}"
+    ;;
+  0|false|no)
+    ;;
+  *)
+    echo "Invalid NAPKIN_RUN_REDIS value: ${RUN_REDIS}" >&2
+    exit 1
+    ;;
+esac
+
+case "${RUN_MYSQL}" in
+  1|true|yes)
+    "${SCRIPT_DIR}/bench-mysql" "${MYSQL_RUNS}"
+    ;;
+  0|false|no)
+    ;;
+  *)
+    echo "Invalid NAPKIN_RUN_MYSQL value: ${RUN_MYSQL}" >&2
+    exit 1
+    ;;
+esac
