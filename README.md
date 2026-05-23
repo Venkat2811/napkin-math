@@ -99,16 +99,16 @@ available when you want aggressive host tuning on a dedicated Linux box.
 **Note:** The active benchmark path today is Criterion.rs in `benches/`, and
 the checked-in Criterion entrypoint currently owns `memory_read`,
 `compressed_memory_read`, `disk`, `hash`, `memory_random`, `sort`, `syscall`,
-and `tcp`. `src/main.rs` is still the older ad hoc harness and remains the
-source of truth for the Linux-only `io_uring` disk variant plus `redis`,
-`mysql`, and `mutex` style probes that have not been fully migrated and
-revalidated yet. Use `./script/bench-legacy` for the remaining local legacy
-bench, `./script/bench-redis` for the Redis probe, and `./script/bench-mysql`
-for the MySQL write probe. `./script/bench-local --noplot` runs the full
-owned local surface in this checkout, and `./script/bench-services` runs the
-service-backed probes. Those service probes are intentionally narrow: Redis is
-a single-key GET on a warm connection, and MySQL is a single autocommitted
-INSERT on a warm connection against a disposable local InnoDB table. The root
+and `tcp`, including the Linux-only `io_uring` sequential-read disk variant.
+`src/main.rs` is still the older ad hoc harness and now mostly remains for the
+service probes plus rough legacy coordination experiments like `mutex`. Use
+`./script/bench-legacy` for those remaining ad hoc probes,
+`./script/bench-redis` for the Redis probe, and `./script/bench-mysql` for the
+MySQL write probe. `./script/bench-local --noplot` runs the full owned local
+surface in this checkout, and `./script/bench-services` runs the service-backed
+probes. Those service probes are intentionally narrow: Redis is a single-key
+GET on a warm connection, and MySQL is a single autocommitted INSERT on a warm
+connection against a disposable local InnoDB table. The root
 [`bench_status.json`](bench_status.json) file records which README rows are
 Criterion-backed, legacy-harness-backed, external reference text, or currently
 stale.

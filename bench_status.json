@@ -71,7 +71,7 @@
         "Random HDD Read (8 KiB)"
       ],
       "status": "active_with_caveat",
-      "note": "The generic SSD/HDD README rows are still hand-curated summaries over the same local benchmark shapes; the io_uring sequential-read variant remains legacy-only."
+      "note": "The generic SSD/HDD README rows are still hand-curated summaries over the same local benchmark shapes. The Linux-only io_uring sequential-read variant now ships as an additional active disk sub-benchmark."
     },
     {
       "id": "tcp",
@@ -92,14 +92,7 @@
       "memory_write_sequential",
       "mutex"
     ],
-    "benches": [
-      {
-        "id": "disk_read_sequential_io_uring",
-        "readme_rows": [
-          "Sequential SSD read (8 KiB)"
-        ]
-      }
-    ]
+    "benches": []
   },
   "service_harness": [
     {

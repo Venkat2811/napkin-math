@@ -7,6 +7,8 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 #[cfg(target_os = "linux")]
 use std::os::fd::AsRawFd;
+#[cfg(target_os = "linux")]
+use std::slice;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
@@ -15,6 +17,12 @@ const FILE_FILL_CHUNK_SIZE: usize = n_mib_bytes!(8) as usize;
 const SEQ_READ_FILE_SIZE: usize = n_gib_bytes!(1) as usize;
 const RANDOM_READ_FILE_SIZE: usize = n_gib_bytes!(8) as usize;
 const WRITE_WRAP_SIZE: u64 = n_gib_bytes!(1) as u64;
+#[cfg(target_os = "linux")]
+const IO_URING_BUFFER_SIZE: usize = n_kib_bytes!(32) as usize;
+#[cfg(target_os = "linux")]
+const IO_URING_READS_PER_ITERATION: usize = 64;
+#[cfg(target_os = "linux")]
+const IO_URING_BYTES_PER_ITERATION: usize = IO_URING_BUFFER_SIZE * IO_URING_READS_PER_ITERATION;
 
 fn benchmark_file_path(suffix: &str) -> PathBuf {
     let base = std::env::var("NAPKIN_BENCH_FILE").unwrap_or_else(|_| String::from("/tmp/napkin.txt"));
@@ -222,6 +230,65 @@ impl SequentialWriteSample {
     }
 }
 
+#[cfg(target_os = "linux")]
+struct IoUringSequentialReadSample {
+    buffers: Vec<Vec<u8>>,
+    file: std::fs::File,
+    ring: rio::Rio,
+    remaining: usize,
+    offset: usize,
+}
+
+#[cfg(target_os = "linux")]
+impl IoUringSequentialReadSample {
+    fn new(prepared: &PreparedFile) -> Self {
+        let file = prepared.open_read();
+        drop_file_page_cache(&file);
+
+        unsafe {
+            libc::posix_fadvise(file.as_raw_fd(), 0, 0, libc::POSIX_FADV_SEQUENTIAL);
+        }
+
+        Self {
+            buffers: vec![vec![0; IO_URING_BUFFER_SIZE]; IO_URING_READS_PER_ITERATION],
+            file,
+            ring: rio::new().expect("create io_uring"),
+            remaining: prepared.size_bytes,
+            offset: 0,
+        }
+    }
+
+    fn run(&mut self, iters: u64, total_size: usize) -> Duration {
+        let start = Instant::now();
+        for _ in 0..iters {
+            let ptr = self.buffers.as_mut_ptr();
+            let mut completions = Vec::with_capacity(IO_URING_READS_PER_ITERATION);
+
+            for i in 0..IO_URING_READS_PER_ITERATION {
+                if self.remaining == 0 {
+                    self.offset = 0;
+                    self.remaining = total_size;
+                }
+
+                unsafe {
+                    let buffer = &slice::from_raw_parts_mut(ptr.add(i), 1)[0];
+                    completions.push(self.ring.read_at(&self.file, buffer, self.offset as u64));
+                }
+
+                self.offset += IO_URING_BUFFER_SIZE;
+                self.remaining -= IO_URING_BUFFER_SIZE;
+            }
+
+            for completion in completions {
+                let read = completion.wait().unwrap();
+                assert_eq!(read, IO_URING_BUFFER_SIZE);
+            }
+            black_box(&self.buffers);
+        }
+        start.elapsed()
+    }
+}
+
 fn sequential_disk_read_benchmark(c: &mut Criterion) {
     let prepared = OnceLock::new();
     let mut group = c.benchmark_group("disk");
@@ -289,9 +356,36 @@ fn sequential_disk_write_benchmark(c: &mut Criterion) {
     group.finish();
 }
 
+#[cfg(target_os = "linux")]
+fn io_uring_disk_read_benchmark(c: &mut Criterion) {
+    let prepared = OnceLock::new();
+    let mut group = c.benchmark_group("disk");
+    group.sample_size(10);
+    group.warm_up_time(Duration::from_secs(5));
+    group.measurement_time(Duration::from_secs(10));
+    group.throughput(Throughput::Bytes(IO_URING_BYTES_PER_ITERATION as u64));
+    group.bench_function("io_uring_sequential_read/2 MiB", |b| {
+        b.iter_custom(|iters| {
+            let prepared = prepared.get_or_init(|| {
+                PreparedFile::new(
+                    benchmark_file_path("criterion-io-uring-sequential-read"),
+                    SEQ_READ_FILE_SIZE,
+                )
+            });
+            let mut sample = IoUringSequentialReadSample::new(prepared);
+            sample.run(iters, prepared.size_bytes)
+        })
+    });
+    group.finish();
+}
+
+#[cfg(not(target_os = "linux"))]
+fn io_uring_disk_read_benchmark(_c: &mut Criterion) {}
+
 criterion_group!(
     benches,
     sequential_disk_read_benchmark,
     random_disk_read_benchmark,
-    sequential_disk_write_benchmark
+    sequential_disk_write_benchmark,
+    io_uring_disk_read_benchmark
 );

@@ -5,34 +5,5 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-RUN_IO_URING="${NAPKIN_RUN_IO_URING:-auto}"
-IO_URING_REGEX="${NAPKIN_IO_URING_REGEX:-disk_read_sequential_io_uring}"
-IO_URING_RUNS="${NAPKIN_IO_URING_RUNS:-1}"
-HAS_FILTER_ARGS=0
-
-if [ "$#" -gt 0 ]; then
-  HAS_FILTER_ARGS=1
-fi
-
 cd "${REPO_ROOT}"
-
-"${SCRIPT_DIR}/bench-criterion" "$@"
-
-case "${RUN_IO_URING}" in
-  0|false|no)
-    exit 0
-    ;;
-  auto)
-    if [ "${HAS_FILTER_ARGS}" -eq 1 ] || [ "$(uname -s)" != "Linux" ]; then
-      exit 0
-    fi
-    ;;
-  1|true|yes)
-    ;;
-  *)
-    echo "Invalid NAPKIN_RUN_IO_URING value: ${RUN_IO_URING}" >&2
-    exit 1
-    ;;
-esac
-
-"${SCRIPT_DIR}/bench-legacy" "${IO_URING_REGEX}" "${IO_URING_RUNS}"
+exec "${SCRIPT_DIR}/bench-criterion" "$@"
