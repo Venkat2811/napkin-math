@@ -57,6 +57,30 @@
       ],
       "status": "active_with_caveat",
       "note": "Criterion re-clones a 1 MiB unsorted input per iteration so the sort always runs on randomized data."
+    },
+    {
+      "id": "disk",
+      "path": "benches/benchmarks/disk.rs",
+      "runner": "script/bench-criterion",
+      "readme_rows": [
+        "Sequential SSD read (8 KiB)",
+        "Sequential SSD write, -fsync (8KiB)",
+        "Random SSD Read (8 KiB)",
+        "Sequential SSD write, +fsync (8KiB)",
+        "Sequential HDD Read (8 KiB)",
+        "Random HDD Read (8 KiB)"
+      ],
+      "status": "active_with_caveat",
+      "note": "The generic SSD/HDD README rows are still hand-curated summaries over the same local benchmark shapes; the io_uring sequential-read variant remains legacy-only."
+    },
+    {
+      "id": "tcp",
+      "path": "benches/benchmarks/tcp.rs",
+      "runner": "script/bench-criterion",
+      "readme_rows": [
+        "TCP Echo Server (32 KiB)"
+      ],
+      "status": "active"
     }
   ],
   "legacy_harness": {
@@ -70,41 +94,9 @@
     ],
     "benches": [
       {
-        "id": "tcp_read_write",
-        "readme_rows": [
-          "TCP Echo Server (32 KiB)"
-        ]
-      },
-      {
-        "id": "disk_read_sequential",
-        "readme_rows": [
-          "Sequential SSD read (8 KiB)",
-          "Sequential HDD Read (8 KiB)"
-        ]
-      },
-      {
         "id": "disk_read_sequential_io_uring",
         "readme_rows": [
           "Sequential SSD read (8 KiB)"
-        ]
-      },
-      {
-        "id": "disk_read_random",
-        "readme_rows": [
-          "Random SSD Read (8 KiB)",
-          "Random HDD Read (8 KiB)"
-        ]
-      },
-      {
-        "id": "disk_write_sequential_no_fsync",
-        "readme_rows": [
-          "Sequential SSD write, -fsync (8KiB)"
-        ]
-      },
-      {
-        "id": "disk_write_sequential_fsync",
-        "readme_rows": [
-          "Sequential SSD write, +fsync (8KiB)"
         ]
       }
     ]
