@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "updated_on": "2026-05-23",
+  "sources": {
+    "disruptor_rs": {
+      "display_name": "disruptor-rs",
+      "repo_url": "https://github.com/Venkat2811/disruptor-rs",
+      "repo_path": "../disruptor-rs",
+      "commit": "7b32d11",
+      "summary": "Pinned inter-thread ring benchmark source for SPSC and MPSC handoff heuristics.",
+      "evidence": [
+        {
+          "file": "README.md",
+          "lines": "412-481",
+          "topic": "Published SPSC latency/throughput tables and burst/pause methodology."
+        }
+      ]
+    },
+    "myelon": {
+      "display_name": "myelon",
+      "repo_url": "https://github.com/Venkat2811/myelon",
+      "repo_path": "../myelon",
+      "commit": "35d68fb",
+      "summary": "Pinned inter-process SHM/mmap transport source for signal, ping-pong, and broadcast heuristics.",
+      "evidence": [
+        {
+          "file": "README.md",
+          "lines": "38-78",
+          "topic": "Published headline signal, ping-pong, and broadcast numbers."
+        },
+        {
+          "file": "crates/perf-bench/README.md",
+          "lines": "15-49",
+          "topic": "Capability matrix and methodology for signal, ping-pong, and broadcast benches."
+        }
+      ]
+    }
+  },
+  "rows": [
+    {
+      "id": "inter_thread_spsc",
+      "scope": "Inter-thread",
+      "operation": "Lock-free handoff",
+      "shape": "SPSC, burst = `1`",
+      "heuristic": "`7-17 ns`, `60-150M msgs/s`",
+      "source": "disruptor_rs",
+      "notes": "One producer, one consumer, busy-spin style ring / bounded channel regime."
+    },
+    {
+      "id": "inter_thread_spsc_batched",
+      "scope": "Inter-thread",
+      "operation": "Batched handoff",
+      "shape": "SPSC, bursts of `10-100`",
+      "heuristic": "`2.6-3.2 ns / msg`, `315-380M msgs/s`",
+      "source": "disruptor_rs",
+      "notes": "Batching changes the answer enough that a single queue-latency number is misleading."
+    },
+    {
+      "id": "inter_thread_mpsc",
+      "scope": "Inter-thread",
+      "operation": "Multi-producer handoff",
+      "shape": "MPSC aggregate",
+      "heuristic": "`~340M msgs/s` ring, `~75M msgs/s` bounded channel",
+      "source": "disruptor_rs",
+      "notes": "Aggregate throughput across two producers; use only for CPU-burning same-host paths."
+    },
+    {
+      "id": "inter_process_signal",
+      "scope": "Inter-process",
+      "operation": "Signal",
+      "shape": "`1p1c`, `64B` event, no ack",
+      "heuristic": "`~160-330M ops/s` total signal ceiling",
+      "source": "myelon",
+      "notes": "Not RTT; producer and consumer are both doing work every event."
+    },
+    {
+      "id": "inter_process_pingpong",
+      "scope": "Inter-process",
+      "operation": "Ping-pong",
+      "shape": "`1p1c` SHM, `64B`",
+      "heuristic": "`~120-190 ns p50`, `~5-6M RTT/s`",
+      "source": "myelon",
+      "notes": "Request/response RTT on one host with busy-spin waiting."
+    },
+    {
+      "id": "inter_process_broadcast",
+      "scope": "Inter-process",
+      "operation": "Broadcast",
+      "shape": "`1p4c` mmap, `1 KiB`",
+      "heuristic": "`~9M msgs/s` producer, `~9M msgs/s` per consumer",
+      "source": "myelon",
+      "notes": "Every consumer sees every message; aggregate delivered bandwidth scales with fan-out."
+    },
+    {
+      "id": "inter_process_payload_bandwidth",
+      "scope": "Inter-process",
+      "operation": "Payload bandwidth",
+      "shape": "`1p4c` mmap, `128 KiB`",
+      "heuristic": "`~14 GiB/s` producer-side publish bandwidth",
+      "source": "myelon",
+      "notes": "Large-payload same-host fan-out regime; do not reuse for small-message latency budgeting."
+    }
+  ]
+}

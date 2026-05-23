@@ -144,21 +144,28 @@ size, and backend (`shm` vs `mmap`).
 For now, treat the table below as a companion reference range rather than a
 single memorized constant. The active benchmark path in this repo does not yet
 own the full inter-thread/inter-process transport surface. These rows are
-distilled from dedicated transport benchmark suites in
-[`disruptor-rs`](https://github.com/Venkat2811/disruptor-rs/tree/7b32d11) for
-inter-thread rings and
-[`myelon`](https://github.com/Venkat2811/myelon/tree/35d68fb) for
-inter-process SHM/mmap rings on modern x86 hosts.
+distilled from dedicated transport benchmark suites and pinned in
+[`host_local_sources.json`](host_local_sources.json). The companion refresh
+path is `./script/refresh-host-local`, which regenerates the block below from
+that provenance file.
 
-| Operation                          | Shape                            | Heuristic                         | Notes |
-| ---------------------------------- | -------------------------------- | --------------------------------- | ----- |
-| Inter-thread lock-free handoff     | SPSC, burst = `1`                | `7-17 ns`, `60-150M msgs/s`       | One producer, one consumer, busy-spin style ring / bounded channel regime. |
-| Inter-thread batched handoff       | SPSC, bursts of `10-100`         | `2.6-3.2 ns / msg`, `315-380M msgs/s` | Batching changes the answer enough that a single queue-latency number is misleading. |
-| Inter-thread multi-producer handoff | MPSC aggregate                  | `~340M msgs/s` ring, `~75M msgs/s` bounded channel | Aggregate throughput across two producers; use only for CPU-burning same-host paths. |
-| Inter-process signal               | `1p1c`, `64B` event, no ack      | `~160-330M ops/s` total signal ceiling | Not RTT; producer and consumer are both doing work every event. |
-| Inter-process ping-pong            | `1p1c` SHM, `64B`                | `~120-190 ns p50`, `~5-6M RTT/s`  | Request/response RTT on one host with busy-spin waiting. |
-| Inter-process broadcast            | `1p4c` mmap, `1 KiB`             | `~9M msgs/s` producer, `~9M msgs/s` per consumer | Every consumer sees every message; aggregate delivered bandwidth scales with fan-out. |
-| Inter-process payload bandwidth    | `1p4c` mmap, `128 KiB`           | `~14 GiB/s` producer-side publish bandwidth | Large-payload same-host fan-out regime; do not reuse for small-message latency budgeting. |
+<!-- host-local:start -->
+Generated from [`host_local_sources.json`](host_local_sources.json) via `./script/refresh-host-local`.
+
+Pinned companion sources:
+- [`disruptor-rs@7b32d11`](https://github.com/Venkat2811/disruptor-rs/tree/7b32d11): Pinned inter-thread ring benchmark source for SPSC and MPSC handoff heuristics.
+- [`myelon@35d68fb`](https://github.com/Venkat2811/myelon/tree/35d68fb): Pinned inter-process SHM/mmap transport source for signal, ping-pong, and broadcast heuristics.
+
+| Scope | Operation | Shape | Heuristic | Source | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Inter-thread | Lock-free handoff | SPSC, burst = `1` | `7-17 ns`, `60-150M msgs/s` | [`disruptor-rs@7b32d11`](https://github.com/Venkat2811/disruptor-rs/tree/7b32d11) | One producer, one consumer, busy-spin style ring / bounded channel regime. |
+| Inter-thread | Batched handoff | SPSC, bursts of `10-100` | `2.6-3.2 ns / msg`, `315-380M msgs/s` | [`disruptor-rs@7b32d11`](https://github.com/Venkat2811/disruptor-rs/tree/7b32d11) | Batching changes the answer enough that a single queue-latency number is misleading. |
+| Inter-thread | Multi-producer handoff | MPSC aggregate | `~340M msgs/s` ring, `~75M msgs/s` bounded channel | [`disruptor-rs@7b32d11`](https://github.com/Venkat2811/disruptor-rs/tree/7b32d11) | Aggregate throughput across two producers; use only for CPU-burning same-host paths. |
+| Inter-process | Signal | `1p1c`, `64B` event, no ack | `~160-330M ops/s` total signal ceiling | [`myelon@35d68fb`](https://github.com/Venkat2811/myelon/tree/35d68fb) | Not RTT; producer and consumer are both doing work every event. |
+| Inter-process | Ping-pong | `1p1c` SHM, `64B` | `~120-190 ns p50`, `~5-6M RTT/s` | [`myelon@35d68fb`](https://github.com/Venkat2811/myelon/tree/35d68fb) | Request/response RTT on one host with busy-spin waiting. |
+| Inter-process | Broadcast | `1p4c` mmap, `1 KiB` | `~9M msgs/s` producer, `~9M msgs/s` per consumer | [`myelon@35d68fb`](https://github.com/Venkat2811/myelon/tree/35d68fb) | Every consumer sees every message; aggregate delivered bandwidth scales with fan-out. |
+| Inter-process | Payload bandwidth | `1p4c` mmap, `128 KiB` | `~14 GiB/s` producer-side publish bandwidth | [`myelon@35d68fb`](https://github.com/Venkat2811/myelon/tree/35d68fb) | Large-payload same-host fan-out regime; do not reuse for small-message latency budgeting. |
+<!-- host-local:end -->
 
 If you need one quick mental checksum: inter-thread rings are usually in the
 single-digit-to-tens-of-nanoseconds regime, inter-process SHM ping-pong is

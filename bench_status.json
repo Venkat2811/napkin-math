@@ -183,7 +183,7 @@
       "readme_rows": [
         "Host-Local Communication"
       ],
-      "note": "Derived from companion benchmark repos disruptor-rs and myelon, not from napkin-math benches."
+      "note": "Derived from companion benchmark repos disruptor-rs and myelon, pinned in host_local_sources.json and rendered into README by script/refresh-host-local, not from napkin-math benches."
     }
   ],
   "stale_readme_claims": [

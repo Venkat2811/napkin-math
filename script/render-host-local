@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SOURCES_FILE="${REPO_ROOT}/host_local_sources.json"
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "jq is required to render host-local provenance" >&2
+  exit 1
+fi
+
+jq -r '
+  def source_label($sources):
+    . as $row
+    | ($sources[$row.source]) as $source
+    | "[`" + $source.display_name + "@" + $source.commit + "`](" + $source.repo_url + "/tree/" + $source.commit + ")";
+  "Generated from [`host_local_sources.json`](host_local_sources.json) via `./script/refresh-host-local`.",
+  "",
+  "Pinned companion sources:",
+  (
+    .sources
+    | to_entries[]
+    | "- [`" + .value.display_name + "@" + .value.commit + "`](" + .value.repo_url + "/tree/" + .value.commit + "): " + .value.summary
+  ),
+  "",
+  "| Scope | Operation | Shape | Heuristic | Source | Notes |",
+  "| --- | --- | --- | --- | --- | --- |",
+  (
+    . as $root
+    | .rows[]
+    | "| " + .scope + " | " + .operation + " | " + .shape + " | " + .heuristic + " | " + source_label($root.sources) + " | " + .notes + " |"
+  )
+' "${SOURCES_FILE}"
