@@ -107,19 +107,23 @@
       "runner": "script/bench-redis",
       "env": [
         "NAPKIN_REDIS_URL",
+        "NAPKIN_REDIS_VALUE_BYTES",
         "NAPKIN_REDIS_PORT",
         "NAPKIN_REDIS_CONTAINER_NAME",
         "NAPKIN_REDIS_IMAGE"
       ],
       "readme_rows": [
         "{MySQL, Memcached, Redis, ..} Query"
-      ]
+      ],
+      "status": "active_with_caveat",
+      "note": "Single persistent connection GET probe against one pre-written value. Value size is configurable via NAPKIN_REDIS_VALUE_BYTES."
     },
     {
       "id": "mysql_write",
       "runner": "script/bench-mysql",
       "env": [
         "NAPKIN_MYSQL_URL",
+        "NAPKIN_MYSQL_TITLE",
         "NAPKIN_MYSQL_PORT",
         "NAPKIN_MYSQL_CONTAINER_NAME",
         "NAPKIN_MYSQL_IMAGE",
@@ -127,7 +131,9 @@
       ],
       "readme_rows": [
         "{MySQL, Memcached, Redis, ..} Query"
-      ]
+      ],
+      "status": "active_with_caveat",
+      "note": "Single autocommitted INSERT probe on one warm connection against a disposable local InnoDB table. This is a rough local commit/query heuristic, not a general OLTP benchmark."
     }
   ],
   "external_reference": [

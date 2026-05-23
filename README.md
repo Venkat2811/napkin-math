@@ -106,7 +106,9 @@ revalidated yet. Use `./script/bench-legacy` for the remaining local legacy
 bench, `./script/bench-redis` for the Redis probe, and `./script/bench-mysql`
 for the MySQL write probe. `./script/bench-local --noplot` runs the full
 owned local surface in this checkout, and `./script/bench-services` runs the
-service-backed probes. The root
+service-backed probes. Those service probes are intentionally narrow: Redis is
+a single-key GET on a warm connection, and MySQL is a single autocommitted
+INSERT on a warm connection against a disposable local InnoDB table. The root
 [`bench_status.json`](bench_status.json) file records which README rows are
 Criterion-backed, legacy-harness-backed, external reference text, or currently
 stale.

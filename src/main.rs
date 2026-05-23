@@ -44,6 +44,18 @@ fn mysql_benchmark_url() -> String {
     env_or_default("NAPKIN_MYSQL_URL", "mysql://root:@localhost:3306/napkin")
 }
 
+fn redis_benchmark_value_bytes() -> usize {
+    std::env::var("NAPKIN_REDIS_VALUE_BYTES")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|value| *value > 0)
+        .unwrap_or(64)
+}
+
+fn mysql_benchmark_title() -> String {
+    env_or_default("NAPKIN_MYSQL_TITLE", "aerodynamic chair")
+}
+
 #[cfg(target_os = "linux")]
 fn drop_file_page_cache(file: &std::fs::File) {
     unsafe {
@@ -1148,11 +1160,12 @@ fn tcp_read_write() {
 
 fn redis_read_single_key() {
     let client = redis::Client::open(redis_benchmark_url()).unwrap();
+    let value_bytes = redis_benchmark_value_bytes();
 
     let result = benchmark(
         || {
             let mut con = client.get_connection().unwrap();
-            let bytes: Vec<u8> = (0..64).map(|_| rand::random::<u8>()).collect();
+            let bytes: Vec<u8> = (0..value_bytes).map(|_| rand::random::<u8>()).collect();
             con.set::<&str, Vec<u8>, ()>("1", bytes).unwrap();
             con
         },
@@ -1163,7 +1176,7 @@ fn redis_read_single_key() {
     )
     .unwrap();
 
-    result.print_results("Redis Read", 64);
+    result.print_results("Redis Read", value_bytes);
 }
 
 fn sort() {
@@ -1278,56 +1291,14 @@ fn hash_siphash() {
 
 fn mysql_write() {
     let url = mysql_benchmark_url();
+    let title = mysql_benchmark_title();
+    let bytes_per_iteration = std::mem::size_of::<i64>() + title.len();
 
-    // struct Product {
-    //     id: i64,
-    //     shop_id: i64,
-    //     title: Option<String>,
-    //     body_html: Option<String>,
-    //     vendor: Option<String>,
-    //     created_at: SystemTime,
-    //     updated_at: SystemTime,
-    // }
+    struct Test {
+        conn: mysql::PooledConn,
+        title: String,
+    }
 
-    // https://mydbops.wordpress.com/2018/07/27/innodb-physical-files-on-mysql-8-0/
-    // 0x5 => 5 => ib_logfile0: REDO LOG
-    // 0x1C => 28 => binlog: BIN LOG
-    // 0x9 => 9 => ibdata: SHARED TABLESPACE
-    // 0x20 => 32 => products.ibd: TABLE ITSELF
-    // 0xD => 13 => undo
-    // 0x19 => temp_5.ibt
-    //
-    // I think some are slow, some fast, due to filesystem batching?
-    // https://www.kernel.org/doc/Documentation/filesystems/ext4.txt
-    //
-    // This is an `strace` for a MYSQL insert. Notice the huge variability in elapsed time (in
-    // microseconds). You can see the 2PC, then the later stages (after the transaction returns) to
-    // update InnoDB (table, double-write buffer, etc.)
-    //
-    // Is the variability due to EXT4 batching? max_batch_time / min_batch_time mounting options
-    // (defaults are 0..15ms)
-    // https://www.kernel.org/doc/Documentation/filesystems/ext4.txt
-    // If we trace the kernel here for a backtrace in the fsync path in ext4
-    // (http://www.brendangregg.com/blog/2016-01-18/ebpf-stack-trace-hack.html) we would likely get
-    // this.
-    //
-    // PID/THRD        RELATIVE  ELAPSD    CPU SYSCALL(args)
-    // 4020/0x15e84b:  43494372    5536     99 fsync(0x5, 0x0, 0x0)   // PREPARE, SLOW
-    // 4020/0xa145e6:    535406     267     93 fsync(0x1C, 0x0, 0x0)  // PREPARE, FAST
-    // 4020/0x15e84b:  43494492     238     87 fsync(0x5, 0x0, 0x0)   // ?, FAST
-    // 4020/0x15e84b:  43495108    2796    129 fsync(0x5, 0x0, 0x0)   // COMMIT, SLOW
-    //
-    // I think all this happens after client has returned..?
-    //
-    // 4020/0x15e7a7:  14185246    5577    147 fsync(0x9, 0x0, 0x0)  // ?
-    // 4020/0x15e7a3:     81974     277     92 fsync(0x9, 0x0, 0x0)  // ?
-    // 4020/0x15e7a3:     82035     216     52 fsync(0x20, 0x0, 0x0) // FLUSH
-    // 4020/0x15e7a3:     82116     231     61 fsync(0xD, 0x0, 0x0)  // ?
-    // 4020/0x15e84b:  43495999     249     86 fsync(0x5, 0x0, 0x0)  // ?
-    // 4020/0x15e848:  130442427     195     37 fsync(0x5, 0x0, 0x0) // ?
-    // 4020/0x15e7a7:  14185565    5626     89 fsync(0x9, 0x0, 0x0)  // ?
-    // 4020/0x15e7a3:     82274     359     90 fsync(0x19, 0x0, 0x0) //
-    // 4020/0x15e848:  130444415     277    110 fsync(0x5, 0x0, 0x0)
     let result = benchmark(
         || {
             let opts = Opts::from_url(&url).unwrap();
@@ -1355,47 +1326,24 @@ fn mysql_write() {
             ",
             )
             .unwrap();
-            pool
+            Test {
+                conn,
+                title: title.clone(),
+            }
         },
-        |pool| {
-            let mut handles = vec![];
-
-            // Why is this faster than fsync(2)?
-            //
-            // (1) Concurrent fsyncs to multiple disks...?
-            // (2) Group Commit?
-            //
-            // For some reason, some of these fsyncs are taking < 1ms, wheras in my benchmarks they
-            // typically take 5ms (which also does happen). Extremely variable.
-            for i in 0..16 {
-                println!("thread: {}", i);
-                handles.push(thread::spawn({
-                    let pool = pool.clone();
-                    move || {
-                        let mut conn = pool.get_conn().unwrap();
-                        for _ in 0..1000 {
-                            conn.exec_drop(
-                                r"INSERT INTO products (shop_id, title) VALUES (:shop_id, :title)",
-                                params! { "shop_id" => 123, "title" => "aerodynamic chair" },
-                            )
-                            .unwrap();
-                        }
-                    }
-                }));
-            }
-            // Expected 'naive' fsyncs to the binlog: 16 * 1,000 => 16,000
-            //
-            // Actual as per `sudo dtruss -e -n mysql -t fsync 2>&1 | grep "fsync(0x1C"`:
-            //
-            // 71 entries!
-
-            for handle in handles {
-                handle.join().unwrap();
-            }
-            false
+        |test| {
+            // Keep this as a single autocommitted insert on one warm connection. The goal is a
+            // rough local query/commit probe, not a bulk-loader benchmark.
+            test.conn
+                .exec_drop(
+                    r"INSERT INTO products (shop_id, title) VALUES (:shop_id, :title)",
+                    params! { "shop_id" => 123_i64, "title" => &test.title },
+                )
+                .unwrap();
+            true
         },
     )
     .unwrap();
 
-    result.print_results("MySQL Write", 8 + 17);
+    result.print_results("MySQL Write", bytes_per_iteration);
 }
